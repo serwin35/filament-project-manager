@@ -27,7 +27,7 @@ proxy:
   mailhog:
     - mail.lndo.site
   appserver_nginx:
-    - laravel-app.lndo.site
+    - filament-app.lndo.site
   phpmyadmin:
     - phpmyadmin.lndo.site
 
