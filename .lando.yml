@@ -1,0 +1,127 @@
+name: "Laravel-APP"
+recipe: laravel
+
+env_file:
+  - src/.env
+
+excludes:
+  - src/vendor
+  - src/node_modules
+
+config:
+  webroot: src/public
+  via: nginx
+  php: 8.3
+  xdebug: true
+  cache: redis
+  ssl: false
+  database: mysql:8.0
+  config:
+    database: .lando/my.cnf
+    php: .lando/php.ini
+    vhosts: .lando/nginx.conf
+    cache: .lando/redis.conf
+  workdir: app/src
+
+proxy:
+  mailhog:
+    - mail.lndo.site
+  appserver_nginx:
+    - laravel-app.lndo.site
+  phpmyadmin:
+    - phpmyadmin.lndo.site
+
+services:
+  database:
+    portforward: 3307
+  phpmyadmin:
+    type: phpmyadmin
+    hosts:
+      - database
+  node:
+    type: node:20
+    build:
+      - npm --prefix src install
+      - npm --prefix src run build
+  mailhog:
+    type: mailhog
+    hogfrom:
+      - appserver
+  appserver:
+    type: php:8.3
+    workdir: /src
+    ssl: true
+    build_as_root:
+      - apt-get update -y
+      - apt install nano
+      - apt install libxslt1-dev -y
+      - apt-get install cron -y
+      - docker-php-ext-install xsl
+      - service cron start
+    build:
+      - '[ ! -f "src/.env" ] && cp src/.env.example src/.env || echo ".env already present"'
+      - cd src && composer install
+      - cd src && php artisan key:generate
+      - cd src && php artisan migrate
+    run_as_root:
+      - service cron start
+    run:
+      - crontab /app/.lando/cron.txt
+    overrides:
+      volumes:
+        - ./:/app
+        - ./src:/app/src
+      depends_on:
+        - database
+  horizon:
+    type: php:8.3
+    via: cli
+    scanner: false
+    command: "cd src && php artisan horizon"
+    overrides:
+      restart: always
+  cache:
+    portforward: 6381
+tooling:
+  npm:
+    service: node
+    dir: /app/src
+  watch:
+    service: node
+    dir: /app/src
+    cmd: "npm run dev"
+  horizon:terminate:
+    service: horizon
+    description: "Restarts the Horizon service"
+    user: root
+    cmd: "cd src && php artisan horizon:terminate"
+  phpunit:
+    service: appserver
+    description: "Runs phpunit tests"
+    cmd: ./vendor/bin/phpunit
+  coverage-report:
+    service: appserver
+    cmd: "/app/src/vendor/bin/phpunit --coverage-html coverage-report/"
+    env:
+      XDEBUG_MODE: coverage
+  phpstan:
+    service: appserver
+    cmd: "cd src && ./vendor/bin/phpstan analyse"
+    description: "Runs phpstan static analysis"
+  phpcs:
+    service: appserver
+    cmd: "/app/src/vendor/bin/phpcs"
+    options:
+    description: Run phpcs for given folder or file.
+  php-cs-fixer:
+    service: appserver
+    cmd: "/app/src/vendor/bin/php-cs-fixer"
+    description: "Runs php-cs-fixer"
+  pint:
+    service: appserver
+    cmd: "/app/src/vendor/bin/pint"
+    description: Run laravel pint.
+  composer:
+    service: appserver
+    dir: /app/src
+    description: Run laravel composer.
