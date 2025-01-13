@@ -26,9 +26,9 @@ return new class extends Migration
 
             $table->string('state')->index();
 
-            $table->foreignId('user_id')
+            $table->foreignId('assigned_user_id')
                 ->nullable()
-                ->constrained();
+                ->constrained('users');
             $table->foreignId('owner_id')
                 ->nullable()
                 ->constrained('users');

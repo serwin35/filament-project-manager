@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TaskStateEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Task extends Model
@@ -22,7 +23,7 @@ class Task extends Model
 
     ];
 
-    protected function casts()
+    protected function casts(): array
     {
         return [
             'state' => TaskStateEnum::class,
@@ -31,17 +32,17 @@ class Task extends Model
         ];
     }
 
-    public function project()
+    public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
-    public function user()
+    public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function owner()
+    public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
